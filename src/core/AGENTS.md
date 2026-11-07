@@ -12,3 +12,5 @@
 - Mark a run `interrupted` only when its owning process is gone. Never guess a different outcome.
 - Write `run.json` atomically and append to `events.jsonl`. Create both with mode `0600`.
 - Stay within the non-goals in ARCHITECTURE.md. Retries, durable queues, budgets, and automatic recovery are out of scope.
+
+- Preserve prompt dispatch timestamps and record actual turn completion before persistence/cleanup. Optional turnEnd outcome/completedAt and terminal status turn/completedAt metadata distinguish timeout, cancellation and transport failure without changing CLI outcomes. Keep older events readable; never infer successful completion after a crash.

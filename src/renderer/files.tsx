@@ -49,7 +49,7 @@ export function useFiles(api: DesktopApi, snapshot: Snapshot | undefined, active
       : null;
   const requestJson = JSON.stringify({
     workspace,
-    context: active || preview !== null ? context : null,
+    context: active ? context : null,
   });
   useEffect(() => {
     let current = true;
@@ -67,18 +67,10 @@ export function useFiles(api: DesktopApi, snapshot: Snapshot | undefined, active
     snapshot?.files?.context.project === project && snapshot.files.context.root === root
       ? snapshot.files
       : null;
-  const roots = project
-    ? [
-        { path: project, label: `Project · ${pathLabel(project)}` },
-        ...(snapshot?.worktrees?.worktrees ?? [])
-          .filter((item) => item.path !== project)
-          .map((item) => ({
-            path: item.path,
-            label: `Worktree · ${item.branch ?? "Detached HEAD"} · ${item.path}`,
-          })),
-      ]
-    : [];
-  const selectRoot = (next: string) => setSelection({ workspace, root: next, preview: null });
+  const roots = project ? [{ path: project, label: `Project · ${pathLabel(project)}` }] : [];
+  const selectRoot = (_next?: string) => {
+    if (project) setSelection({ workspace, root: project, preview: null });
+  };
   const selectFile = (path: string | null) => {
     if (root) setSelection({ workspace, root, preview: path });
   };
@@ -118,16 +110,22 @@ export function useFiles(api: DesktopApi, snapshot: Snapshot | undefined, active
 }
 export type FileBrowser = ReturnType<typeof useFiles>;
 
-export function FilesPage({ browser }: { browser: FileBrowser }) {
+export function FilesPage({
+  browser,
+  onOpenProject,
+}: {
+  browser: FileBrowser;
+  onOpenProject(): void;
+}) {
   const [hidden, setHidden] = useState(false);
   useEffect(() => {
     if (browser.revealSerial && browser.preview?.split("/").some((part) => part.startsWith(".")))
       setHidden(true);
   }, [browser.revealSerial, browser.preview]);
   return (
-    <main className="files-page" aria-label="Files">
+    <section className="files-page" aria-label="File Explorer">
       <header className="files-header">
-        <h1>Files</h1>
+        <h2>File Explorer</h2>
         {browser.root && (
           <div className="files-controls">
             <label>
@@ -158,7 +156,14 @@ export function FilesPage({ browser }: { browser: FileBrowser }) {
           </div>
         )}
       </header>
-      {!browser.root && <p className="files-status">Open a project to browse files.</p>}
+      {!browser.root && (
+        <div className="files-status">
+          <p>Open a project to browse files.</p>
+          <button type="button" onClick={onOpenProject}>
+            Open project
+          </button>
+        </div>
+      )}
       {browser.error && (
         <p className="error-banner" role="alert">
           {browser.error}
@@ -167,7 +172,7 @@ export function FilesPage({ browser }: { browser: FileBrowser }) {
       {browser.root && (
         <FileTree key={`${browser.workspace}:${browser.root}`} browser={browser} hidden={hidden} />
       )}
-    </main>
+    </section>
   );
 }
 

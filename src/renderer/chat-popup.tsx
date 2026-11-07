@@ -1,7 +1,9 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Action, DesktopApi, DesktopRun } from "../bridge/index.js";
 import type { RunEvent } from "../core/index.js";
+import { sessionStatus, turnTimings } from "./chat-presentation.js";
 import { Icon } from "./icons.js";
+import { MessageCopy, TurnTimer } from "./message-controls.js";
 import { continueBlocker } from "./recovery.js";
 import { statusSpec, transcript } from "./state.js";
 
@@ -70,6 +72,8 @@ export function ChatPopup({
   const sendable = editable || resumable;
   const events = live ? (streamed ?? noEvents) : history;
   const blocks = useMemo(() => transcript(events), [events]);
+  const timings = useMemo(() => turnTimings(events, status), [events, status]);
+  const presentation = run.view ? sessionStatus(run.view) : statusSpec[status];
   const runPending = run.view?.pending ?? [];
 
   useLayoutEffect(() => {
@@ -223,8 +227,8 @@ export function ChatPopup({
             {run.record.agent} / {id.slice(-6)}
           </h2>
           <span className="status-label" data-status={status}>
-            <Icon name={statusSpec[status].icon} />
-            {statusSpec[status].label}
+            <Icon name={presentation.icon} />
+            {presentation.label}
           </span>
           {orchestrated && (
             <span
@@ -316,20 +320,28 @@ export function ChatPopup({
               </div>
             )}
             {blocks.slice(-visible).map((block) => (
-              <article
-                className={`event ${block.type}${matchRequest?.index === Number(block.key) ? " search-match" : ""}`}
-                key={block.key}
-                data-event-index={block.key}
-                tabIndex={-1}
-              >
-                {block.text && <pre>{block.text}</pre>}
-                {block.detail && (
-                  <details>
-                    <summary>Handoff summary</summary>
-                    <pre>{block.detail}</pre>
-                  </details>
+              <Fragment key={block.key}>
+                <article
+                  className={`event ${block.type}${matchRequest?.index === Number(block.key) ? " search-match" : ""}`}
+                  key={block.key}
+                  data-event-index={block.key}
+                  tabIndex={-1}
+                >
+                  {block.text && <pre>{block.text}</pre>}
+                  {(block.type === "message" || (block.type === "prompt" && !block.automatic)) && (
+                    <MessageCopy text={block.text} />
+                  )}
+                  {block.detail && (
+                    <details>
+                      <summary>Handoff summary</summary>
+                      <pre>{block.detail}</pre>
+                    </details>
+                  )}
+                </article>
+                {timings.get(block.key) && (
+                  <TurnTimer timing={timings.get(block.key)} visible={active && expanded} />
                 )}
-              </article>
+              </Fragment>
             ))}
           </>
         )}

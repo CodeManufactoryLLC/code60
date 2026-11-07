@@ -1418,6 +1418,10 @@ describe("orchestrated workers over ACP", () => {
     const firstWorker = await dispatch(firstCall, firstScope, "HANG first", "shared-id");
     const secondWorker = await dispatch(secondCall, secondScope, "HANG second", "shared-id");
     expect(firstWorker).not.toBe(secondWorker);
+    expect(controller.snapshot().chats.find((chat) => chat.run?.id === firstId)?.workers).toEqual([
+      firstWorker,
+    ]);
+    expect(controller.snapshot().chat.workers).toEqual([secondWorker]);
     expect((await firstCall("code60_get_context")).body.result.liveWorkers).toBe(1);
     expect((await secondCall("code60_get_context")).body.result.liveWorkers).toBe(1);
     expect((await firstCall("code60_list_agents")).body.result.workers).toEqual([
@@ -1662,6 +1666,7 @@ describe("orchestrated workers over ACP", () => {
       (await next("code60_finish_agent", { scope: context.body.result.scope, runId })).body.error,
     ).toContain("No worker with this ID");
     expect(controller.snapshot().workers).toContain(runId);
+    expect(controller.snapshot().chat.workers).toEqual([]);
   });
 });
 

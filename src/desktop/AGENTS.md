@@ -8,7 +8,7 @@
 - Check the sender of every IPC request and parse its arguments with `bridge` before acting. Act only on runs recorded in the open workspace.
 - Serialize user actions and completion history refreshes in the controller. Allow overlapping batches, each with its own selected parallel limit, orchestrator, and subscriptions. Route actions and approvals to the owning batch, and retain earlier transcripts when adding sessions.
 - Refuse folder and database switches until every batch has ended. Stop all and every shutdown path, including forced shutdown, must stop every batch.
-- Return only newly created session IDs from start so the renderer opens the new batch without disturbing existing chats or drafts. When sessions run without worktrees, warn about directory sharing with existing live sessions as well as within the new batch; declining must leave existing sessions untouched.
+- Return only newly created session IDs from start so the renderer identifies the new minimized dock entries without disturbing existing chats or drafts. When sessions run without worktrees, warn about directory sharing with existing live sessions as well as within the new batch; declining must leave existing sessions untouched.
 - Ask with a native dialog before destructive or unisolated actions, and before quitting with active runs.
 - On quit, signals, and renderer crashes, shut down every run through `core` and wait for it before exiting. Never remove worktrees automatically.
 - Keep the project database (`projects.ts`) to repository paths, open times, saved run configurations (name, batch settings, use count, last use), and validated prompt template edits. Never store user task prompts or transcripts in it, never modify a database that is not a Code60 database, and never recreate a missing one silently. Load `node:sqlite` lazily; Node.js 22.12 has it only behind a flag.
@@ -23,3 +23,5 @@
 
 - Expose worker dispatch and control only through the chat's authenticated MCP gateway. Validate arguments, require the current project/chat scope for mutations, and act only on workers created by that chat in the open project. Never pass the gateway to workers. Keep ownership and request-ID deduplication in memory, enforce `maxParallel` including idle workers, and preserve normal worktree and leftover-process safeguards.
 - Deliver bounded worker turn-end/failure updates only between orchestration turns, with automatic prompt origin. Stop and Stop all pause automatic updates; user send or Resume updates unpauses them. Revoke the gateway on chat replacement and clear update timers on shutdown.
+
+- Include current-project worker IDs owned by each chat generation in every chat snapshot. Renderer aggregate activity must not derive ownership from the global list or process existence. Preserve Windows process/job support and sandbox boundaries.

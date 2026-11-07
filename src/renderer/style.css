@@ -35,7 +35,10 @@
   --titlebar-left: env(titlebar-area-x, 0px);
   --titlebar-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
   --titlebar-height: env(titlebar-area-height, 0px);
-  --app-footer-height: 64px;
+  --app-footer-height: max(
+    40px,
+    calc(2.2 * max(var(--button-size, 13px), var(--text-size, 13px)) + 10px)
+  );
   --app-titlebar-height: max(28px, var(--titlebar-height));
   --sidebar-width: 220px;
   /* Workspace inset and content spacing. */
@@ -1046,7 +1049,7 @@ button.project-card {
   bottom: 0;
   left: 0;
   right: 0;
-  height: min(calc(600px + var(--app-footer-height)), calc(100dvh - 8px));
+  height: calc(100dvh - 8px);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -1069,11 +1072,11 @@ button.project-card {
   position: relative;
   flex: none;
   height: var(--app-footer-height);
-  width: min(220px, 100cqw);
+  width: min(max(220px, calc(14 * var(--text-size, 13px))), 100cqw);
   pointer-events: auto;
 }
 .chat-slot.open {
-  width: min(480px, 100cqw);
+  width: min(400px, 100cqw);
   /* The popup clips its reveal animation; its wrapper carries the outside shadow. */
   filter: drop-shadow(0 3px 14px rgb(0 0 0 / 18%));
 }
@@ -1112,10 +1115,13 @@ button.project-card {
   left: auto;
 }
 .chat-head {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
   width: 100%;
   height: 100%;
-  font: 400 11px var(--font);
+  font: 400 var(--text-size, 13px) var(--font);
   --letter-spacing: normal;
   text-transform: none;
   text-align: left;
@@ -1127,6 +1133,28 @@ button.project-card {
 }
 .chat-head[aria-pressed="false"] {
   padding-right: 46px;
+}
+.chat-head-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.1;
+}
+.chat-head-summary > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-head-status {
+  display: flex;
+  gap: 4px;
+}
+.chat-head-status > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-approval-count {
+  flex-shrink: 0;
 }
 .chat-drag-handle {
   position: absolute;
@@ -1188,7 +1216,7 @@ button.project-card {
   bottom: 100%;
   /* Stay inside the page frame, 8px clear of its top border. */
   height: min(
-    600px,
+    max(480px, calc(12 * var(--button-size, 13px))),
     calc(
       100dvh -
       var(--app-footer-height) -
@@ -1205,7 +1233,7 @@ button.project-card {
   box-shadow: var(--overlay-shadow);
   border-bottom: 0;
   z-index: 10;
-  width: min(480px, 100cqw);
+  width: min(400px, 100cqw);
   opacity: 1;
   clip-path: inset(0);
   transition:
@@ -3068,10 +3096,10 @@ dialog::backdrop {
 }
 
 .app-workspace[data-chat="true"] {
-  grid-template-columns: var(--sidebar-width) clamp(150px, 18vw, 220px) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 }
 .app-workspace[data-chat="true"] > .page-panel {
-  grid-column: 3;
+  grid-column: 2;
 }
 .chat-sidebar {
   grid-column: 2;
@@ -3518,12 +3546,113 @@ dialog::backdrop {
   }
 }
 
-/* Files shares the application inspector across pages. */
+/* Chat owns the project-root explorer and its read-only preview. */
+#panel-chat {
+  flex-direction: row;
+}
+.chat-conversations {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+:where(#panel-chat) > .files-page {
+  flex: 0 1 280px;
+  min-width: min(180px, 35%);
+  border-right: 1px solid var(--border);
+  overflow: auto;
+}
+.sidebar-version {
+  flex-shrink: 0;
+  padding: 8px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+#chat-pages .chat-sidebar {
+  background: transparent;
+}
+#chat-pages .chat-sidebar-heading {
+  padding: 0 0 4px;
+}
+#chat-pages .chat-sidebar-new {
+  width: 100%;
+  min-height: 36px;
+  text-align: left;
+  justify-content: flex-start;
+  border: 0;
+}
+#chat-pages .chat-sidebar-entry {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.message-copy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--text-size, 13px);
+  color: var(--muted);
+  text-transform: none;
+}
+.message-copy-feedback:not(:empty) {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding: 4px 8px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  z-index: 1;
+}
+:is(.transcript .event) .message-copy button {
+  min-height: 36px;
+  padding: 3px 8px;
+}
+.turn-timer {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: var(--text-size, 13px);
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+.chat-turn-content {
+  display: contents;
+}
+.chat-head[data-emphasis="abnormal"] {
+  box-shadow: inset 3px 0 var(--danger);
+}
+.chat-head[data-emphasis="decision"] {
+  background: var(--warning-bg);
+}
+.chat-popup .approvals {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 45%;
+  overflow: auto;
+}
+.sidebar :is(button, [role="tab"]):focus-visible,
+.message-copy button:focus-visible,
+.chat-head:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+@media (max-width: 800px) {
+  #panel-chat:has(> .files-page) {
+    flex-direction: column;
+  }
+  #panel-chat > .files-page {
+    flex: 0 1 35%;
+    min-height: 90px;
+  }
+}
 .app-workspace[data-inspector="true"] {
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr) auto;
 }
 .app-workspace[data-chat="true"][data-inspector="true"] {
-  grid-template-columns: var(--sidebar-width) clamp(150px, 18vw, 220px) minmax(0, 1fr) auto;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) auto;
 }
 .files-page {
   display: flex;
@@ -3540,7 +3669,7 @@ dialog::backdrop {
   gap: 12px;
   padding: 16px;
 }
-.files-header h1,
+.files-header h2,
 .file-inspector-header h2 {
   margin: 0;
   font: var(--title-weight, 400) var(--title-size, 18px) var(--title-font, var(--font));
@@ -3665,7 +3794,7 @@ dialog::backdrop {
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
   .app-workspace[data-chat="true"][data-inspector="true"] {
-    grid-template-columns: var(--sidebar-width) clamp(150px, 18vw, 220px) minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
   .file-inspector {
     position: fixed;

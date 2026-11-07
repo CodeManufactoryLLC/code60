@@ -7,7 +7,6 @@ describe("page tabs", () => {
       open: [
         "chat",
         "episodic-memory",
-        "files",
         "sessions",
         "messages",
         "events",
@@ -31,5 +30,13 @@ describe("page tabs", () => {
     expect(updateTabs(settings, { type: "open", id: "settings" })).toEqual(settings);
     expect(updateTabs(settings, { type: "close", id: "settings" })).toBe(settings);
     expect(updateTabs(settings, { type: "select", id: "chat" })).toEqual(initialTabs);
+  });
+  it("routes legacy Files actions to Chat without recreating a Files page", () => {
+    const settings = updateTabs(initialTabs, { type: "select", id: "settings" });
+    for (const type of ["open", "select"] as const) {
+      const result = updateTabs(settings, { type, id: "files" });
+      expect(result.active).toBe("chat");
+      expect(result.open).not.toContain("files");
+    }
   });
 });

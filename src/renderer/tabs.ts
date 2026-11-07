@@ -21,7 +21,6 @@ export const initialTabs: PageTabs = {
   open: [
     "chat",
     "episodic-memory",
-    "files",
     "sessions",
     "messages",
     "events",
@@ -38,6 +37,7 @@ export const initialTabs: PageTabs = {
 export type TabAction = { type: "open" | "select" | "close"; id: PageId };
 
 export function updateTabs(state: PageTabs, action: TabAction): PageTabs {
+  if (action.id === "files") action = { ...action, id: "chat" };
   switch (action.type) {
     case "open":
       return {

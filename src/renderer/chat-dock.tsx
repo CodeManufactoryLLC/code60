@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react"
 import type { DesktopApi, Snapshot } from "../bridge/index.js";
 import type { RunEvent } from "../core/index.js";
 import { ChatPopup } from "./chat-popup.js";
+import { sessionStatus } from "./chat-presentation.js";
 import { emptyChats, updateChats } from "./chats.js";
 import { Icon } from "./icons.js";
 import { statusSpec } from "./state.js";
@@ -263,6 +264,9 @@ export function ChatDock({
               if (!run) return null;
               const id = entry.id;
               const waiting = run.view?.pending.length ?? 0;
+              const presentation = run.view
+                ? sessionStatus(run.view)
+                : statusSpec[run.record.status];
               const drop =
                 drag && id === others[drag.to]?.id
                   ? "before"
@@ -316,6 +320,10 @@ export function ChatDock({
                       else heads.current.delete(id);
                     }}
                     aria-pressed={entry.expanded}
+                    aria-label={`${run.record.agent} / ${id.slice(-6)} / ${presentation.label}${
+                      waiting > 0 ? ` / ${waiting} approval${waiting === 1 ? "" : "s"}` : ""
+                    }`}
+                    data-emphasis={presentation.emphasis}
                     aria-controls={`chat-${id}`}
                     aria-describedby="chat-drag-help"
                     aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
@@ -334,9 +342,16 @@ export function ChatDock({
                       }
                     }}
                   >
-                    {run.record.agent} / {id.slice(-6)} /{" "}
-                    {statusSpec[run.view?.status ?? run.record.status].label}
-                    {waiting > 0 && ` / ${waiting} approval${waiting === 1 ? "" : "s"}`}
+                    <Icon name={presentation.icon} />
+                    <span className="chat-head-summary">
+                      <span>
+                        {run.record.agent} / {id.slice(-6)}
+                      </span>
+                      <span className="chat-head-status">
+                        <span>{presentation.label}</span>
+                        {waiting > 0 && <span className="chat-approval-count">({waiting})</span>}
+                      </span>
+                    </span>
                   </button>
                   <button
                     type="button"

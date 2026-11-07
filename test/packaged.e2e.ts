@@ -86,6 +86,10 @@ test("installed app persists projects and runs agents, MCP and cancellation", as
   try {
     let page = await app.firstWindow();
     await page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(page.getByRole("note", { name: "Running Code60 version" })).toHaveText(
+      `Code60 ${version}`,
+    );
+    await expect(page.locator(".app-footer")).toHaveCSS("height", "40px");
     await page.evaluate(() => window.desktop.connectDatabase("create"));
     await page.evaluate(() => window.desktop.chooseFolder());
     await page.evaluate(() => window.desktop.setOrchestrationProvider("fake"));
@@ -118,6 +122,7 @@ test("installed app persists projects and runs agents, MCP and cancellation", as
         id,
       );
     await expect.poll(status).toBe("idle");
+    await expect(page.locator(".chat-head").first()).toHaveAttribute("aria-pressed", "false");
     await page.evaluate((id) => window.desktop.action({ type: "finish", id }), id);
     await expect.poll(status).toBe("finished");
     const cancelledIds = await page.evaluate(() =>

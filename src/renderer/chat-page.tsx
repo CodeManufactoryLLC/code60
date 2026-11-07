@@ -1,7 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { DesktopApi, OrchestrationChat, OrchestrationChatAction } from "../bridge/index.js";
+import type {
+  DesktopApi,
+  DesktopRun,
+  OrchestrationChat,
+  OrchestrationChatAction,
+} from "../bridge/index.js";
 import type { RunEvent } from "../core/index.js";
+import { delegatedActivity, sessionStatus, turnTimings } from "./chat-presentation.js";
 import { Icon } from "./icons.js";
+import { MessageCopy, TurnTimer } from "./message-controls.js";
 import { type Block, statusSpec, transcript } from "./state.js";
 
 function ChatMessage({ block }: { block: Block }) {
@@ -25,6 +32,9 @@ function ChatMessage({ block }: { block: Block }) {
     <article className={`event ${block.type}`} aria-label={speaker}>
       {block.type !== "message" && <div className="chat-message-speaker">{speaker}</div>}
       <pre>{block.text}</pre>
+      {(block.type === "message" || (block.type === "prompt" && !block.automatic)) && (
+        <MessageCopy text={block.text} />
+      )}
       {block.detail && <pre>{block.detail}</pre>}
     </article>
   );
@@ -35,11 +45,13 @@ export function ChatSidebar({
   chats,
   selectedId,
   database,
+  onNavigate,
 }: {
   api: DesktopApi;
   chats: readonly OrchestrationChat[];
   selectedId: string | undefined;
   database: string | null;
+  onNavigate(): void;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -61,14 +73,16 @@ export function ChatSidebar({
   return (
     <nav className="chat-sidebar" aria-label="Orchestrator chats">
       <header className="chat-sidebar-heading">
-        <h2 className="sidebar-title">Chats</h2>
         <button
           type="button"
           className="chat-sidebar-new"
           disabled={pending || !database}
-          onClick={() => void action({ type: "new" })}
+          onClick={() => {
+            onNavigate();
+            void action({ type: "new" });
+          }}
         >
-          New
+          New chat
         </button>
       </header>
       {error && (
@@ -78,20 +92,28 @@ export function ChatSidebar({
       )}
       <div className="chat-sidebar-list">
         {chats.map(
-          ({ run }, index) =>
+          ({ run, error }, index) =>
             run && (
               <button
                 key={run.id}
                 type="button"
                 className="chat-sidebar-entry"
+                aria-label={`Chat ${index + 1}`}
+                aria-description={error || sessionStatus(run).label}
                 aria-current={run.id === selectedId ? "true" : undefined}
                 disabled={pending}
-                onClick={() => void action({ type: "select", id: run.id })}
+                onClick={() => {
+                  onNavigate();
+                  void action({ type: "select", id: run.id });
+                }}
+                title={error || sessionStatus(run).label}
               >
-                {run.stopping || run.status === "queued" || run.status === "running" ? (
+                {run.stopping || ["queued", "running", "waiting"].includes(run.status) ? (
                   <span className="chat-loader" aria-hidden="true" />
                 ) : null}
                 <span className="chat-sidebar-label">Chat {index + 1}</span>
+                <Icon name={error ? "warning--alt--filled" : sessionStatus(run).icon} />
+                <span className="sr-only">{error || sessionStatus(run).label}</span>
               </button>
             ),
         )}
@@ -108,6 +130,9 @@ export function ChatPage({
   database,
   active,
   onDatabase,
+  runs,
+  explorerOpen,
+  onExplorer,
 }: {
   api: DesktopApi;
   chat: OrchestrationChat | undefined;
@@ -116,6 +141,9 @@ export function ChatPage({
   database: string | null;
   active: boolean;
   onDatabase(): void;
+  runs: readonly DesktopRun[];
+  explorerOpen: boolean;
+  onExplorer(): void;
 }) {
   const id = useId();
   const run = chat?.run;
@@ -132,11 +160,16 @@ export function ChatPage({
   const follow = useRef(true);
   const position = useRef(0);
   const geometry = useRef({ width: 0, height: 0 });
-  const working = run?.status === "running" && run.turns > 0;
+  const working = (run?.status === "running" || run?.status === "waiting") && run.turns > 0;
   const connecting = run?.status === "queued" || (run?.status === "running" && run.turns === 0);
   const ready = run?.status === "idle" && !run.stopping;
   const ended = run && !["queued", "running", "waiting", "idle"].includes(run.status);
   const blocks = useMemo(() => transcript(events), [events]);
+  const timings = useMemo(
+    () => turnTimings(events, run?.status ?? "interrupted"),
+    [events, run?.status],
+  );
+  const delegated = delegatedActivity(chat?.workers ?? [], runs);
   const items = useMemo(() => {
     const result: { key: string; activity: boolean; blocks: Block[] }[] = [];
     for (const block of blocks.slice(-visible)) {
@@ -144,7 +177,13 @@ export function ChatPage({
         block.automatic === true ||
         ["thought", "toolCall", "permission", "note"].includes(block.type);
       const previous = result.at(-1);
-      if (activity && previous?.activity) previous.blocks.push(block);
+      if (
+        activity &&
+        previous?.activity &&
+        block.type !== "prompt" &&
+        !previous.blocks.some((item) => item.type === "prompt")
+      )
+        previous.blocks.push(block);
       else result.push({ key: block.key, activity, blocks: [block] });
     }
     return result;
@@ -157,15 +196,17 @@ export function ChatPage({
       ? "Stopping"
       : connecting || pending === "restart"
         ? "Connecting"
-        : working
-          ? latest?.type === "message"
-            ? "Responding"
-            : latest?.type === "toolCall" || latest?.type === "permission"
-              ? "Working"
-              : "Thinking"
-          : pending === "send"
-            ? "Sending"
-            : "";
+        : run?.status === "waiting"
+          ? "Waiting for approval"
+          : working
+            ? latest?.type === "message"
+              ? "Responding"
+              : latest?.type === "toolCall" || latest?.type === "permission"
+                ? "Working"
+                : "Thinking"
+            : pending === "send"
+              ? "Sending"
+              : "";
   const failed = run && ["failed", "timed_out", "interrupted"].includes(run.status);
   const failure = error || chat?.error || (failed ? run.reason : "");
   useEffect(() => {
@@ -231,6 +272,9 @@ export function ChatPage({
   return (
     <main className="orchestration-chat-page" aria-labelledby={id} hidden={hidden}>
       <header className="orchestration-chat-heading">
+        <button type="button" aria-pressed={explorerOpen} onClick={onExplorer}>
+          <Icon name="folder" /> File Explorer
+        </button>
         <h1 id={id} className="sr-only">
           Chat
         </h1>
@@ -320,26 +364,34 @@ export function ChatPage({
               Show earlier activity
             </button>
           )}
-          {items.map((item) =>
-            item.activity ? (
-              <details className="chat-activity" key={item.key}>
-                <summary>
-                  <Icon name="terminal" />
-                  Activity
-                </summary>
-                <div className="chat-activity-content">
-                  {item.blocks.map((block) => (
-                    <ChatMessage key={block.key} block={block} />
-                  ))}
-                </div>
-              </details>
-            ) : (
-              <ChatMessage key={item.key} block={item.blocks[0] as Block} />
-            ),
-          )}
+          {items.map((item) => (
+            <div className="chat-turn-content" key={item.key}>
+              {item.activity ? (
+                <details className="chat-activity" key={item.key}>
+                  <summary>
+                    <Icon name="terminal" />
+                    Activity
+                  </summary>
+                  <div className="chat-activity-content">
+                    {item.blocks.map((block) => (
+                      <ChatMessage key={block.key} block={block} />
+                    ))}
+                  </div>
+                </details>
+              ) : (
+                <ChatMessage key={item.key} block={item.blocks[0] as Block} />
+              )}
+              {item.blocks.map((block) => {
+                const timing = timings.get(block.key);
+                return timing ? (
+                  <TurnTimer key={block.key} timing={timing} visible={active} />
+                ) : null;
+              })}
+            </div>
+          ))}
         </div>
         <section className="composer" aria-label="Chat composer">
-          {progress ? <span className="chat-loader" aria-hidden="true" /> : null}
+          {progress || delegated ? <span className="chat-loader" aria-hidden="true" /> : null}
           <label className="sr-only" htmlFor={`${id}-message`}>
             Message to orchestrator
           </label>
@@ -360,7 +412,7 @@ export function ChatPage({
           />
           <div className="composer-footer">
             <span className="chat-progress" role="status" aria-live="polite" aria-atomic="true">
-              {progress || label}
+              {[progress || label, delegated].filter(Boolean).join(" · ")}
             </span>
             {working ? (
               <button

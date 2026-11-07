@@ -271,6 +271,8 @@ export interface OrchestrationProvider {
 }
 
 export interface OrchestrationChat {
+  /** Current-project workers owned by this conversation, never inferred from process liveness. */
+  workers?: string[];
   run: RunView | null;
   directory: string | null;
   error: string | null;

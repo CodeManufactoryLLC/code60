@@ -19,10 +19,9 @@ export function updateChats(state: Chats, action: ChatAction): Chats {
   if (action.type === "sync") {
     const entries = state.entries.filter((entry) => action.ids.includes(entry.id));
     const added = action.live.filter((id) => !state.seen.includes(id) && action.ids.includes(id));
-    const first = action.live.some((id) => state.seen.includes(id)) ? undefined : added[0];
     if (!added.length && entries.length === state.entries.length) return state;
     return {
-      entries: [...entries, ...added.map((id) => ({ id, expanded: id === first }))],
+      entries: [...entries, ...added.map((id) => ({ id, expanded: false }))],
       seen: [...new Set([...state.seen, ...added])],
     };
   }

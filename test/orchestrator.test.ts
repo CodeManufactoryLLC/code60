@@ -263,6 +263,42 @@ describe("the scheduler", () => {
 });
 
 describe("turn timeouts and cancellation", () => {
+  it("records actual completion separately from idle time and failure cleanup", async () => {
+    const { orch, agents, clock, store } = await setup({
+      mode: "interactive",
+      script: () => "hang",
+    });
+    orch.start();
+    await flush();
+    const start = clock.now().getTime();
+    await clock.advance(12000);
+    agents.sessions[0]?.endTurn("end_turn");
+    await flush();
+    expect(store.events.find((event) => event.type === "turnEnd")).toMatchObject({
+      turn: 1,
+      outcome: "finished",
+      completedAt: new Date(start + 12000).toISOString(),
+    });
+    await clock.advance(60000);
+    orch.reply("r1", "follow up");
+    await flush();
+    await clock.advance(7000);
+    const session = agents.sessions[0];
+    if (!session) throw new Error("Missing session");
+    const stop = session.stop.bind(session);
+    vi.spyOn(session, "stop").mockImplementation(async (grace) => {
+      await clock.advance(60000);
+      await stop(grace);
+    });
+    session.failTurn(new Error("Transport failure"));
+    await orch.done;
+    expect(store.events.findLast((event) => event.type === "status")).toMatchObject({
+      status: "failed",
+      turn: 2,
+      completedAt: new Date(start + 79000).toISOString(),
+      at: new Date(start + 139000).toISOString(),
+    });
+  });
   it("headless: a timed-out turn is cancelled and the run is timed_out", async () => {
     const { orch, agents, clock, status } = await setup({ script: () => "hang" });
     orch.start();
@@ -278,10 +314,18 @@ describe("turn timeouts and cancellation", () => {
   });
 
   it("desktop app: a timed-out turn that ends in time leaves the run idle; finishing reports timed_out", async () => {
-    const { orch, clock, status } = await setup({ mode: "interactive", script: () => "hang" });
+    const { orch, clock, status, store } = await setup({
+      mode: "interactive",
+      script: () => "hang",
+    });
     orch.start();
     await clock.advance(30 * MIN);
     expect(status("r1")).toBe("idle");
+    expect(store.events.find((event) => event.type === "turnEnd")).toMatchObject({
+      outcome: "timed_out",
+      stopReason: "cancelled",
+      completedAt: clock.now().toISOString(),
+    });
     expect(orch.runs()[0]?.reason).toBe("turn 1 ended: cancelled (turn timed out)");
     await clock.advance(120 * MIN);
     expect(status("r1")).toBe("idle");

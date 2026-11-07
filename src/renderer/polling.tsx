@@ -11,6 +11,7 @@ import {
 } from "../bridge/index.js";
 import { DataTable, type TableOptions } from "./data-table.js";
 import { drawIcon, Icon } from "./icons.js";
+import { MessageAge } from "./message-controls.js";
 import { useTicker } from "./ticker.js";
 
 export const labels: Record<PollKey, string> = {
@@ -36,11 +37,18 @@ export interface PollingProps {
   onChartTick(ms: number): void;
 }
 
-export function PollingWidget({ polling, api }: Pick<PollingProps, "polling" | "api">) {
+export function PollingWidget({
+  polling,
+  api,
+  messageAt,
+  messageScope,
+}: Pick<PollingProps, "polling" | "api"> & {
+  messageAt: number | null | undefined;
+  messageScope: string;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const available = polling.sources.filter((source) => source.status !== "unavailable");
-  const last = Math.max(0, ...polling.sources.map((source) => source.polledAt ?? 0));
   const attempt = async (operation: () => Promise<void>) => {
     setBusy(true);
     setError("");
@@ -56,8 +64,7 @@ export function PollingWidget({ polling, api }: Pick<PollingProps, "polling" | "
     <section className="footer-polling" aria-label="Polling controls">
       <p className="poll-timestamp">
         <Icon name="view" />
-        <span className="sr-only">Last polled </span>
-        {last ? <time dateTime={new Date(last).toISOString()}>{time(last)}</time> : "Never"}
+        <MessageAge at={messageAt} scope={messageScope} />
       </p>
       <div className="button-group">
         <button

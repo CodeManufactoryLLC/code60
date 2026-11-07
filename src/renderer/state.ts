@@ -71,6 +71,8 @@ export function transcript(events: readonly RunEvent[]): Block[] {
   const tools = new Map<string, Block>();
   let open: Block | undefined;
   for (const [index, event] of events.entries()) {
+    // Raw protocol records must not split the corresponding streamed text message.
+    if (event.type === "acp") continue;
     if (event.type === "message" || event.type === "thought") {
       if (open?.type === event.type) open.text += event.text;
       else {
@@ -84,7 +86,6 @@ export function transcript(events: readonly RunEvent[]): Block[] {
     switch (event.type) {
       case "status":
       case "turnEnd":
-      case "acp":
         continue;
       case "prompt":
         if (event.origin === "automatic") {

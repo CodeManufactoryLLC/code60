@@ -520,6 +520,7 @@ export class Run {
     } catch (error) {
       failure = error;
     }
+    const completedAt = clock.now().toISOString();
     clock.clearTimeout(this.turnTimer);
     clock.clearTimeout(this.graceTimer);
     this.turnActive = false;
@@ -540,21 +541,25 @@ export class Run {
 
     if (stopReason === undefined) {
       if (preserveInterruptedOnFailure) {
-        return this.end({
-          status: "interrupted",
-          reason: `the handoff session could not complete: ${message(failure)}`,
-        });
+        return this.end(
+          {
+            status: "interrupted",
+            reason: `the handoff session could not complete: ${message(failure)}`,
+          },
+          { turn, completedAt },
+        );
       }
       return this.end(
         cause !== undefined ? causeOutcome(cause) : { status: "failed", reason: message(failure) },
+        { turn, completedAt },
       );
     }
     this.record.lastStopReason = stopReason;
-    this.emit({ type: "turnEnd", turn, stopReason });
     const outcome =
       cause !== undefined && (cause === "timeout" || stopReason === "cancelled")
         ? causeOutcome(cause)
         : outcomeOf(stopReason);
+    this.emit({ type: "turnEnd", turn, stopReason, completedAt, outcome: outcome.status });
     if (settings.mode === "headless" || this.shutdownRequested) return this.end(outcome);
 
     this.lastOutcome = outcome;
@@ -615,7 +620,10 @@ export class Run {
     });
   }
 
-  private async end(outcome: Outcome): Promise<void> {
+  private async end(
+    outcome: Outcome,
+    timing?: { turn: number; completedAt: string },
+  ): Promise<void> {
     if (this.ending) return this.finished;
     this.ending = true;
     const { clock } = this.deps;
@@ -640,15 +648,19 @@ export class Run {
     }
     if (outcome.status === "interrupted") delete this.record.endedAt;
     else this.record.endedAt = clock.now().toISOString();
-    await this.setStatus(outcome.status, outcome.reason);
+    await this.setStatus(outcome.status, outcome.reason, timing);
     this.resolveFinished();
   }
 
-  private setStatus(status: RunStatus, reason?: string): Promise<void> {
+  private setStatus(
+    status: RunStatus,
+    reason?: string,
+    timing?: { turn: number; completedAt: string },
+  ): Promise<void> {
     this.record.status = status;
     if (reason === undefined) delete this.record.reason;
     else this.record.reason = reason;
-    this.emit({ type: "status", status, ...(reason === undefined ? {} : { reason }) });
+    this.emit({ type: "status", status, ...(reason === undefined ? {} : { reason }), ...timing });
     return this.save();
   }
 

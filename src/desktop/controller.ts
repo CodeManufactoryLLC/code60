@@ -918,6 +918,13 @@ export class DesktopController {
     );
     const session = this.currentChat;
     const chatSnapshot = (session: ChatSession) => ({
+      workers: [...this.workers]
+        .filter(
+          ([, worker]) =>
+            worker.generation === session.chatGeneration &&
+            worker.directory === this.workspace?.dir,
+        )
+        .map(([id]) => id),
       run: session.chat?.runs()[0] ?? null,
       directory: session.chatDirectory,
       error: session.chatError,

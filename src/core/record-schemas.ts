@@ -57,7 +57,13 @@ export const runRecordSchema = z
   );
 
 export const runEventBodySchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("status"), status: runStatusSchema, reason: z.string().optional() }),
+  z.object({
+    type: z.literal("status"),
+    status: runStatusSchema,
+    reason: z.string().optional(),
+    turn: z.number().int().positive().optional(),
+    completedAt: z.string().optional(),
+  }),
   z.object({
     type: z.literal("prompt"),
     turn: z.number().int().positive(),
@@ -92,6 +98,9 @@ export const runEventBodySchema = z.discriminatedUnion("type", [
     type: z.literal("turnEnd"),
     turn: z.number().int().positive(),
     stopReason: stopReasonSchema,
+    /** Actual prompt completion, before persistence/cleanup; absent in legacy records. */
+    completedAt: z.string().optional(),
+    outcome: z.enum(["finished", "cancelled", "timed_out", "failed", "interrupted"]).optional(),
   }),
   /** A raw ACP session update; `payload` is its JSON text, clipped when `truncated`. */
   z.object({
