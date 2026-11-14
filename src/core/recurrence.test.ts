@@ -10,6 +10,14 @@ const interval: AutomationSchedule = {
 };
 
 describe("automation recurrence", () => {
+  it("keeps the claimed high-water mark across a backward clock correction", () => {
+    const claimed = date("2026-01-01T00:05:00Z");
+    for (const saved of [claimed, date("2026-01-01T00:10:00Z"), null]) {
+      const decision = dueDecision(interval, saved, date("2026-01-01T00:04:59Z"), claimed);
+      expect(decision.type).toBe("wait");
+      expect(decision.nextRunAt.toISOString()).toBe("2026-01-01T00:10:00.000Z");
+    }
+  });
   it("anchors intervals rather than drifting from run completion", () => {
     expect(nextOccurrence(interval, date("2026-01-01T00:06:12Z")).toISOString()).toBe(
       "2026-01-01T00:10:00.000Z",

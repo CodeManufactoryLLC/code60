@@ -112,7 +112,12 @@ export class Scheduler {
       }
       for (const automation of state.automations)
         automation.nextRunAt = automation.enabled
-          ? nextOccurrence(automation.schedule, this.now()).toISOString()
+          ? dueDecision(
+              automation.schedule,
+              null,
+              this.now(),
+              this.claimedThrough(automation),
+            ).nextRunAt.toISOString()
           : null;
       await this.save(state);
     });
@@ -123,6 +128,19 @@ export class Scheduler {
     if (revision !== undefined && automation.revision !== revision)
       throw new AutomationError("conflict", "The automation changed. Reload before saving.");
     return automation;
+  }
+  private claimedThrough(automation: Automation): Date | null {
+    let latest: string | null = null;
+    for (const execution of this.store.state.executions) {
+      if (
+        execution.automationId === automation.id &&
+        execution.revision === automation.revision &&
+        execution.scheduledFor &&
+        (!latest || Date.parse(execution.scheduledFor) > Date.parse(latest))
+      )
+        latest = execution.scheduledFor;
+    }
+    return latest ? new Date(latest) : null;
   }
   private async draft(draft: AutomationDraft, previous?: Automation): Promise<Automation> {
     const valid = automationDraftSchema.parse(draft);
@@ -176,8 +194,17 @@ export class Scheduler {
   private async claim(automation: Automation, scheduledFor: string | null, missed = false) {
     const state = structuredClone(this.store.state);
     const current = this.find(state, automation.id);
-    if (scheduledFor)
-      current.nextRunAt = nextOccurrence(current.schedule, this.now()).toISOString();
+    if (scheduledFor) {
+      const claimedThrough = this.claimedThrough(current);
+      const next = new Date(
+        Math.max(this.now().getTime(), Date.parse(scheduledFor), claimedThrough?.getTime() ?? 0),
+      );
+      current.nextRunAt = nextOccurrence(current.schedule, next).toISOString();
+      if (claimedThrough && Date.parse(scheduledFor) <= claimedThrough.getTime()) {
+        await this.save(state);
+        return null;
+      }
+    }
     const reason = missed
       ? "missed"
       : state.block || this.failed
@@ -189,6 +216,13 @@ export class Scheduler {
             : null;
     const execution = this.addExecution(state, automation, scheduledFor, reason);
     await this.save(state); // Unique claim + advanced schedule are durable before launch.
+    if (!reason && this.stopped) {
+      execution.status = "cancelled";
+      execution.reason = "service_stopped";
+      execution.endedAt = this.now().toISOString();
+      await this.save(state);
+      return execution;
+    }
     if (!reason) {
       const abort = new AbortController();
       const snapshot = structuredClone(automation);
@@ -281,6 +315,7 @@ export class Scheduler {
           saved.schedule,
           saved.nextRunAt ? new Date(saved.nextRunAt) : null,
           this.now(),
+          this.claimedThrough(saved),
         );
         if (decision.type !== "wait") {
           await this.claim(
@@ -404,6 +439,8 @@ export class Scheduler {
   }
   async stop(): Promise<void> {
     this.stopped = true;
+    this.active?.abort.abort();
+    await this.tail; // Fence claims that were still persisting when shutdown began.
     this.active?.abort.abort();
     await this.active?.done;
     await this.tail;

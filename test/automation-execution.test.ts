@@ -108,6 +108,20 @@ async function setup() {
   };
 }
 describe("isolated automation execution", () => {
+  it("recognizes missing core records for claims and prelaunch refusals, not uncertain launches", async () => {
+    const s = await setup();
+    expect(await s.executor.inspect({ ...s.execution, status: "claimed" })).toBe("gone");
+    for (const reason of ["provider_changed", "base_missing", "low_disk"] as const)
+      expect(await s.executor.inspect({ ...s.execution, status: "failed", reason })).toBe("gone");
+    expect(await s.executor.inspect(s.execution)).toBe("blocked");
+    expect(
+      await s.executor.inspect({
+        ...s.execution,
+        status: "failed",
+        reason: "preparation_failed",
+      }),
+    ).toBe("blocked");
+  });
   it("overrides permissive global policy, disables MCP, pins a worktree and runs exactly one turn", async () => {
     const s = await setup();
     let pin: AutomationEvidence | undefined;

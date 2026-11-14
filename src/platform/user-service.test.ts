@@ -16,11 +16,13 @@ describe("per-user service supervisors", () => {
     expect(definition.contents).toContain("agent&apos;s entry.js");
     expect(definition.contents).toContain("ThrottleInterval");
     expect(definition.install[0]?.slice(0, 2)).toEqual(["launchctl", "bootstrap"]);
+    expect(definition.start.map((argv) => argv[1])).toEqual(["bootstrap", "kickstart"]);
   });
   it("uses systemd --user, quoted arguments, no linger and a bounded stop", () => {
     const definition = userServiceDefinition("linux", "/home/test", "/state", runtime);
     expect(definition.contents).toContain('ExecStart="/Applications/Code60 App/Code60"');
     expect(definition.contents).toContain("TimeoutStopSec=60");
+    expect(definition.contents).not.toContain("After=default.target");
     expect(JSON.stringify(definition)).not.toContain("linger");
     expect(definition.install[1]?.slice(0, 2)).toEqual(["systemctl", "--user"]);
   });
@@ -34,6 +36,23 @@ describe("per-user service supervisors", () => {
     const command = Buffer.from(encoded, "base64").toString("utf16le");
     expect(command).toContain("'/app/agent''s entry.js'");
     expect(command).toContain("$env:ELECTRON_RUN_AS_NODE='1'");
+    expect(definition.uninstall.map((argv) => argv[1])).toEqual(["/End", "/Delete"]);
+  });
+  it("starts an unloaded launchd job and tolerates bootstrap only when kickstart succeeds", async () => {
+    const definition = userServiceDefinition("darwin", "/Users/test", "/state", runtime);
+    const command = vi.fn(async (_argv: readonly string[]) => true);
+    await controlUserService(definition, "stop", command);
+    command.mockClear();
+    await controlUserService(definition, "start", command);
+    expect(command.mock.calls.map(([argv]) => argv)).toEqual(definition.start);
+    command.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    await expect(controlUserService(definition, "start", command)).resolves.toEqual({
+      available: true,
+    });
+    command.mockResolvedValue(false);
+    await expect(controlUserService(definition, "start", command)).rejects.toThrow(
+      "control failed",
+    );
   });
   it("rejects unsupported platforms and unsafe runtime fields", () => {
     expect(() => userServiceDefinition("freebsd", "/home", "/state", runtime)).toThrow(

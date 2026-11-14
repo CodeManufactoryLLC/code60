@@ -1,4 +1,4 @@
-import { access, realpath } from "node:fs/promises";
+import { access, realpath, unlink } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -13,6 +13,62 @@ import {
 } from "../platform/index.js";
 import { AutomationError } from "./errors.js";
 import { automationClient, automationRoot } from "./service.js";
+
+const updatePath = (env: Readonly<NodeJS.ProcessEnv>) =>
+  join(automationRoot(env), "update-restart.json");
+
+/** Persist restart intent before stopping: the installer replaces this process too. */
+export async function prepareSchedulerUpdate(env: Readonly<NodeJS.ProcessEnv>): Promise<void> {
+  const status = await automationClient(env)({ action: "status" }).catch(() => null);
+  if (!status) return;
+  const registration = (await readPrivateJson(
+    join(automationRoot(env), "registration.json"),
+    16_384,
+  ).catch((error) => {
+    if (fileCode(error) !== "ENOENT") throw error;
+    return null;
+  })) as { installed?: unknown } | null;
+  if (registration?.installed !== true)
+    throw new AutomationError(
+      "refused",
+      "Stop the standalone scheduler before updating, or install the background service first.",
+    );
+  const previous = await readPrivateJson(updatePath(env), 4096).catch((error) => {
+    if (fileCode(error) !== "ENOENT") throw error;
+    return undefined;
+  });
+  await writePrivateJson(
+    updatePath(env),
+    previous ?? { version: 1, pausedAll: (status as { pausedAll: boolean }).pausedAll },
+    previous,
+    4096,
+  );
+  await schedulerControl(env, "stop");
+}
+
+/** Repair the previously consented registration to point at the newly installed runtime. */
+export async function restoreSchedulerUpdate(env: Readonly<NodeJS.ProcessEnv>): Promise<void> {
+  const marker = await readPrivateJson(updatePath(env), 4096).catch((error) => {
+    if (fileCode(error) !== "ENOENT") throw error;
+    return null;
+  });
+  if (marker === null) return;
+  const saved = marker as { version?: unknown; pausedAll?: unknown };
+  if (saved.version !== 1 || typeof saved.pausedAll !== "boolean")
+    throw new AutomationError("unavailable", "Scheduler update recovery metadata is invalid.");
+  await schedulerControl(env, "repair", true);
+  const client = automationClient(env);
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    const status = await client({ action: "status" }).catch(() => null);
+    if (status) break;
+    if (Date.now() >= deadline)
+      throw new AutomationError("unavailable", "Scheduler did not restart after the update.");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (!saved.pausedAll) await client({ action: "resumeAll" });
+  await unlink(updatePath(env));
+}
 
 // Resolve the entry inside each new AppImage mount, never save a temporary mount path.
 const APPIMAGE_SERVICE_CODE =

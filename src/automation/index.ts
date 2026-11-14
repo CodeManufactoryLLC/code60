@@ -4,5 +4,9 @@ export {
   automationRequestSchema,
 } from "../contracts/index.js";
 export { subscribeService } from "./protocol.js";
-export { schedulerControl } from "./registration.js";
+export {
+  prepareSchedulerUpdate,
+  restoreSchedulerUpdate,
+  schedulerControl,
+} from "./registration.js";
 export { automationClient, automationRoot } from "./service.js";

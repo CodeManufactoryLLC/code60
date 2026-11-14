@@ -22,6 +22,18 @@ export const serviceAddress = (root: string) =>
     ? `\\\\.\\pipe\\code60-scheduler-${createHash("sha256").update(root).digest("hex").slice(0, 32)}`
     : join(root, "service.sock");
 const endpointPath = (root: string) => join(root, "connection.json");
+async function connectionMetadata(root: string) {
+  const raw = (await readPrivateJson(endpointPath(root), 4096).catch((error) => {
+    if (fileCode(error) !== "ENOENT") throw error;
+    throw new AutomationError(
+      "unavailable",
+      "Scheduler is not running. Install or start the background service.",
+    );
+  })) as { v?: unknown; token?: unknown } | null;
+  if (raw?.v !== 1 || typeof raw.token !== "string" || !/^[a-f0-9]{64}$/.test(raw.token))
+    throw new AutomationError("unavailable", "Scheduler connection metadata is invalid.");
+  return { token: raw.token };
+}
 
 function send(socket: Socket, value: AutomationResponse) {
   const frame = `${JSON.stringify(value)}\n`;
@@ -198,9 +210,7 @@ export async function subscribeService(
   root: string,
   changed: (disconnected?: boolean) => void,
 ): Promise<() => void> {
-  const raw = (await readPrivateJson(endpointPath(root), 4096)) as { v?: number; token?: string };
-  if (raw.v !== 1 || typeof raw.token !== "string" || !/^[a-f0-9]{64}$/.test(raw.token))
-    throw new AutomationError("unavailable", "Scheduler connection metadata is invalid.");
+  const raw = await connectionMetadata(root);
   const socket = createConnection(serviceAddress(root));
   socket.on("error", () => {});
   const timer = setTimeout(() => socket.destroy(), 10_000);
@@ -236,9 +246,7 @@ export async function subscribeService(
 }
 
 export async function serviceRequest(root: string, request: AutomationRequest): Promise<unknown> {
-  const raw = (await readPrivateJson(endpointPath(root), 4096)) as { v?: unknown; token?: unknown };
-  if (raw?.v !== 1 || typeof raw.token !== "string" || !/^[a-f0-9]{64}$/.test(raw.token))
-    throw new AutomationError("unavailable", "Scheduler connection metadata is invalid.");
+  const raw = await connectionMetadata(root);
   const id = randomUUID();
   const frame = `${JSON.stringify({ v: 1, id, token: raw.token, request })}\n`;
   if (Buffer.byteLength(frame) > AUTOMATION_FRAME_LIMIT)

@@ -82,6 +82,61 @@ const flush = async () => {
 };
 
 describe("durable automation scheduler", () => {
+  it("fences a claim still being saved when shutdown begins", async () => {
+    const s = setup();
+    const automation = (await s.scheduler.request({ action: "create", draft })) as Automation;
+    let saved!: () => void;
+    let entered!: () => void;
+    const saving = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      saved = resolve;
+    });
+    vi.mocked(s.store.save).mockImplementationOnce(async (state) => {
+      entered();
+      await gate;
+      Object.assign(s.store, { state: structuredClone(state) });
+    });
+    const claim = s.scheduler.request({ action: "runNow", id: automation.id });
+    await saving;
+    const stopped = s.scheduler.stop();
+    saved();
+    await claim;
+    await stopped;
+    const revision = s.store.state.revision;
+    await flush();
+    expect(s.executor.execute).not.toHaveBeenCalled();
+    expect(s.store.state.revision).toBe(revision);
+    expect(s.store.state.executions[0]).toMatchObject({
+      status: "cancelled",
+      reason: "service_stopped",
+    });
+  });
+  it("does not replay claimed occurrences after clock rollback, resume or restart", async () => {
+    const s = setup();
+    await s.scheduler.request({ action: "create", draft });
+    await s.advance(60);
+    await flush();
+    s.release();
+    await flush();
+    s.setNow("2026-01-01T00:00:59Z");
+    await s.scheduler.tick();
+    await s.advance(1);
+    expect(s.executor.execute).toHaveBeenCalledTimes(1);
+    await s.scheduler.request({ action: "pauseAll", cancelActive: false });
+    s.setNow("2026-01-01T00:00:59Z");
+    await s.scheduler.request({ action: "resumeAll" });
+    await s.advance(1);
+    expect(s.executor.execute).toHaveBeenCalledTimes(1);
+    await s.scheduler.stop();
+    const restarted = setup(s.store.state);
+    await restarted.scheduler.initialize();
+    await restarted.advance(60);
+    expect(restarted.executor.execute).not.toHaveBeenCalled();
+    expect(restarted.store.state.automations[0]?.nextRunAt).toBe("2026-01-01T00:02:00.000Z");
+    await restarted.scheduler.stop();
+  });
   it("records a turn interrupted by service shutdown as stopped, not failed", async () => {
     const s = setup();
     vi.mocked(s.executor.execute).mockImplementationOnce(

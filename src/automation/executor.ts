@@ -16,6 +16,7 @@ import {
   openWorkspace,
   prepareRuns,
   recordedAgentAlive,
+  UsageError,
 } from "../core/index.js";
 import { fileCode } from "../platform/index.js";
 import { AutomationError } from "./errors.js";
@@ -103,8 +104,9 @@ export function createExecutor(deps: CoreDeps, env: Readonly<NodeJS.ProcessEnv>)
         await verifyRepository(execution.repository);
         const workspace = await openWorkspace(deps, execution.repository.path, env);
         if (!execution.runId) return "blocked";
+        // The record store reports a missing run as a UsageError rather than ENOENT.
         const record = await workspace.store.read(execution.runId).catch((error) => {
-          if (fileCode(error) !== "ENOENT") throw error;
+          if (!(error instanceof UsageError) && fileCode(error) !== "ENOENT") throw error;
           return null;
         });
         if (!record) {

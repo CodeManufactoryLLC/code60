@@ -132,15 +132,25 @@ export type DueDecision =
  *
  * Occurrences missed by more than the grace period (sleep, logout, downtime) are skipped,
  * without catch-up runs. A clock moved backwards pulls the saved time back to the real next
- * occurrence, so a schedule never stalls waiting for a future that no longer applies.
+ * occurrence, so a schedule never stalls waiting for a future that no longer applies. It never
+ * pulls back to or before `claimedThrough`, the latest occurrence already claimed, so a clock
+ * correction cannot replay completed or uncertain work.
  */
 export function dueDecision(
   schedule: AutomationSchedule,
   savedNextRunAt: Date | null,
   now: Date,
+  claimedThrough: Date | null = null,
 ): DueDecision {
-  const upcoming = nextOccurrence(schedule, now);
-  if (savedNextRunAt === null || savedNextRunAt.getTime() > upcoming.getTime())
+  const upcoming = nextOccurrence(
+    schedule,
+    claimedThrough && claimedThrough > now ? claimedThrough : now,
+  );
+  if (
+    savedNextRunAt === null ||
+    savedNextRunAt.getTime() > upcoming.getTime() ||
+    (claimedThrough !== null && savedNextRunAt.getTime() <= claimedThrough.getTime())
+  )
     return { type: "wait", nextRunAt: upcoming };
   if (savedNextRunAt.getTime() > now.getTime()) return { type: "wait", nextRunAt: savedNextRunAt };
   const late = now.getTime() - savedNextRunAt.getTime();

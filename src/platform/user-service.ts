@@ -69,7 +69,10 @@ export function userServiceDefinition(
 <key>ProcessType</key><string>Background</string>
 </dict></plist>\n`,
       install: [["launchctl", "bootstrap", target, path]],
-      start: [["launchctl", "kickstart", `${target}/${LABEL}`]],
+      start: [
+        ["launchctl", "bootstrap", target, path],
+        ["launchctl", "kickstart", `${target}/${LABEL}`],
+      ],
       stop: [["launchctl", "bootout", `${target}/${LABEL}`]],
       uninstall: [["launchctl", "bootout", `${target}/${LABEL}`]],
       status: ["launchctl", "print", `${target}/${LABEL}`],
@@ -79,7 +82,7 @@ export function userServiceDefinition(
     const path = join(home, ".config", "systemd", "user", "code60-scheduler.service");
     return {
       path,
-      contents: `[Unit]\nDescription=Code60 scheduled agents\nAfter=default.target\n
+      contents: `[Unit]\nDescription=Code60 scheduled agents\n
 [Service]\nType=simple
 ExecStart=${[runtime.executable, ...runtime.args].map(unit).join(" ")}
 ${Object.entries(runtime.env)
@@ -120,7 +123,10 @@ Restart=on-failure\nRestartSec=30\nTimeoutStopSec=60\nKillMode=control-group
       ],
       start: [["schtasks.exe", "/Run", "/TN", TASK]],
       stop: [["schtasks.exe", "/End", "/TN", TASK]],
-      uninstall: [["schtasks.exe", "/Delete", "/TN", TASK, "/F"]],
+      uninstall: [
+        ["schtasks.exe", "/End", "/TN", TASK],
+        ["schtasks.exe", "/Delete", "/TN", TASK, "/F"],
+      ],
       status: ["schtasks.exe", "/Query", "/TN", TASK, "/FO", "CSV", "/NH"],
     };
   }
@@ -167,8 +173,12 @@ export async function controlUserService(
     return { available: true };
   }
   for (const argv of definition[action])
-    if (!(await command(argv)))
+    if (!(await command(argv))) {
+      // Bootstrap fails for an already loaded job; only a successful kickstart
+      // proves that start succeeded. All other failures remain fatal.
+      if (action === "start" && argv[0] === "launchctl" && argv[1] === "bootstrap") continue;
       throw new Error("Background service control failed. Check the native user supervisor.");
+    }
   if (action === "uninstall") await unlink(definition.path);
   return { available: action === "start" };
 }

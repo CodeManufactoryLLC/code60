@@ -13,7 +13,11 @@ import {
   shell,
 } from "electron";
 import updaterPackage from "electron-updater";
-import { automationClient, schedulerControl } from "../automation/index.js";
+import {
+  automationClient,
+  prepareSchedulerUpdate,
+  restoreSchedulerUpdate,
+} from "../automation/index.js";
 import {
   CODE60_COPYRIGHT,
   type MenuCommand,
@@ -353,6 +357,15 @@ async function ready(): Promise<void> {
   }
   setEnvironmentPath(process.env, await desktopPath({ signal: startup.signal }));
   if (startup.signal.aborted) return;
+  await restoreSchedulerUpdate(process.env).catch(async () => {
+    await dialog.showMessageBox({
+      type: "error",
+      message: "Background automations could not restart after the update.",
+      detail:
+        "Open Automations to repair the background service. Your schedules and run evidence are kept.",
+      buttons: ["Continue"],
+    });
+  });
   const transparent = await preferences.transparent();
   let enabled = transparent;
   const clickThrough = transparent && process.platform === "darwin";
@@ -388,10 +401,7 @@ async function ready(): Promise<void> {
     async (file) => {
       quitPending = true;
       try {
-        const background = await automationClient(process.env)({ action: "status" }).catch(
-          () => null,
-        );
-        if (background) await schedulerControl(process.env, "stop");
+        await prepareSchedulerUpdate(process.env);
         startup.abort();
         await shutdownDesktop();
         exiting = true;

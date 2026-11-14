@@ -47,6 +47,18 @@ async function setup() {
   return { root, token, handle, listeners, raw };
 }
 describe("private scheduler protocol", () => {
+  it("explains how to save when the scheduler has not been started", async () => {
+    const root = await mkdtemp(join(tmpdir(), "c60-ipc-"));
+    cleanups.push(() => rm(root, { recursive: true, force: true }));
+    for (const operation of [
+      serviceRequest(root, { action: "list" }),
+      subscribeService(root, () => {}),
+    ])
+      await expect(operation).rejects.toMatchObject({
+        code: "unavailable",
+        message: "Scheduler is not running. Install or start the background service.",
+      });
+  });
   it("authenticates fixed requests and returns safe typed errors", async () => {
     const s = await setup();
     expect(await serviceRequest(s.root, { action: "status" })).toEqual({ result: true });
