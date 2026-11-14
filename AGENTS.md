@@ -8,7 +8,7 @@ environments.
 ## Architecture and Module Rules
 
 - Read `ARCHITECTURE.md` before changing behavior. It defines the modules
-  (`cli`, `desktop`, `bridge`, `renderer`, `core`, `agents`, `git`, `contracts`, `platform`), their
+  (`cli`, `desktop`, `bridge`, `renderer`, `core`, `automation`, `agents`, `git`, `contracts`, `platform`), their
   dependency rules, and the non-goals.
 - Each `src/<module>/AGENTS.md` adds rules for that module. Follow them when
   changing its code.

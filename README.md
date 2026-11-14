@@ -42,6 +42,25 @@ existing files remain untouched.
 See [implementation and validation notes](docs/relay-implementation.md) for limits
 and platform-validation status.
 
+## Scheduled automations
+
+Open **Automations** to save one agent, prompt, isolated Git repository and explicit
+tool permissions on an interval, daily or weekly schedule. Install the background
+service with the page's consent dialog to keep scheduling after Code60 quits.
+The computer must stay awake and the user logged in. Missed occurrences are skipped,
+not replayed, and an agent finishing a turn is not proof the task succeeded.
+
+The CLI exposes `code60 automation --help` and `code60 scheduler --help`.
+For source development, build with `npm run build` and run
+`node dist/automation/main.js` in a separate terminal before saving automations.
+That standalone process is not installed for future logins.
+
+App updates cancel active automation work, restart the installed service with the
+new runtime, and preserve its previous global pause state. Stop a standalone
+development scheduler before installing an app update. If restart fails, Code60
+shows a recovery message; repair the service from Automations. Schedules, evidence
+and worktrees are preserved.
+
 ## Security and privacy
 
 **Worktrees isolate changes, not permissions. Code60 does not sandbox agents.**

@@ -371,6 +371,7 @@ function PageTabList({
     "home",
     ...(relay && !chatPending ? (["relay"] as const) : []),
     "chat",
+    "automations",
     "apps",
     ...(appsExpanded
       ? [
@@ -805,6 +806,9 @@ function PageTabList({
             onSelect={selectConversation}
           />
         )}
+      </div>
+      <div role="tablist" aria-label="Automations page" aria-orientation="vertical">
+        {page("automations", true)}
       </div>
       <div role="tablist" aria-label="Apps page" aria-orientation="vertical">
         {page("apps", true)}

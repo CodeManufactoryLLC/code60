@@ -58,6 +58,7 @@ describe("sandboxed diagnostic preload", () => {
     expect(invoke).toHaveBeenLastCalledWith("desktop:snapshot-summary");
     // Verify the existing fixed forwarding surface, not just newly added methods.
     const requests = {
+      automation: "automation",
       browseMemories: "memory-browse",
       memoryDetail: "memory-detail",
       memoryAction: "memory-action",
@@ -111,6 +112,17 @@ describe("sandboxed diagnostic preload", () => {
       action: "action",
     };
     const request = { opaque: "request" };
+    const automationListener = vi.fn();
+    const offAutomation = api.onAutomationChanged?.(automationListener) as () => void;
+    const automationHandler = on.mock.lastCall?.[1] as () => void;
+    expect(on).toHaveBeenLastCalledWith("desktop:automation-changed", automationHandler);
+    automationHandler();
+    expect(automationListener).toHaveBeenCalledOnce();
+    offAutomation();
+    expect(removeListener).toHaveBeenLastCalledWith(
+      "desktop:automation-changed",
+      automationHandler,
+    );
     const detailListener = vi.fn();
     const offDetails = api.onDetails?.(detailListener) as () => void;
     const [detailChannel, detailHandler] = on.mock.calls.at(-1) as [

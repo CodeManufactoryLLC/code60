@@ -45,6 +45,8 @@ export { useCssColors } from "./table-appearance.js";
 
 const markerWidth = 40;
 const tableTitles: Record<TableId, string> = {
+  automations: "Schedules",
+  "automation-history": "Execution history",
   memories: "Memories",
   logs: "Logs",
   sessions: "Sessions",

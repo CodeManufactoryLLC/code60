@@ -14,6 +14,11 @@ import {
 } from "electron";
 import updaterPackage from "electron-updater";
 import {
+  automationClient,
+  prepareSchedulerUpdate,
+  restoreSchedulerUpdate,
+} from "../automation/index.js";
+import {
   CODE60_COPYRIGHT,
   type MenuCommand,
   parseAction,
@@ -70,6 +75,7 @@ import {
 import { defaultDeps, stateHome } from "../core/index.js";
 import { diagnosticMessage, setEnvironmentPath } from "../platform/index.js";
 import { installAppImage } from "./appimage-update.js";
+import { DesktopAutomations } from "./automations.js";
 import { DesktopController } from "./controller.js";
 import { installDeb } from "./deb-update.js";
 import { desktopPath } from "./environment.js";
@@ -154,8 +160,37 @@ controller.memory.subscribe(() => {
   if (window && !window.isDestroyed() && !window.webContents.isDestroyed())
     window.webContents.send("desktop:memory-changed");
 });
+const automations = new DesktopAutomations(
+  process.env,
+  {
+    async pick() {
+      const selected = await dialog.showOpenDialog({
+        properties: ["openDirectory"],
+        title: "Choose automation repository",
+      });
+      return selected.canceled ? null : (selected.filePaths[0] ?? null);
+    },
+    async confirm(title, detail) {
+      const result = await dialog.showMessageBox({
+        type: "warning",
+        message: title,
+        detail,
+        buttons: ["Cancel", "Confirm"],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      return result.response === 1 && !exiting;
+    },
+  },
+  () => {
+    if (window && !window.isDestroyed()) window.webContents.send("desktop:automation-changed");
+  },
+  () => controller.snapshot(false, true).agents,
+);
 let shutdownTask: Promise<void> | undefined;
 function shutdownDesktop(force = false): Promise<void> {
+  automations.reset();
   if (shutdownTask) {
     if (force) void controller.shutdown(true).catch(() => {});
     return shutdownTask;
@@ -184,12 +219,16 @@ async function quit(confirm: boolean): Promise<void> {
   if (quitPending) return;
   quitPending = true;
   try {
-    if (confirm && controller.hasActiveWork) {
+    const background = confirm
+      ? await automationClient(process.env)({ action: "status" }).catch(() => null)
+      : null;
+    if (confirm && (controller.hasActiveWork || background)) {
       const result = await dialog.showMessageBox({
         type: "warning",
-        message: "Stop all agents and quit?",
-        detail: "Active turns will be cancelled and idle sessions finished. Worktrees are kept.",
-        buttons: ["Keep working", "Stop and quit"],
+        message: "Quit Code60?",
+        detail:
+          "Desktop-owned turns will be cancelled and idle sessions finished. Background automations keep running while Code60 is quit. Worktrees are kept. Use Automations to pause or cancel background work.",
+        buttons: ["Keep working", "Quit"],
         defaultId: 0,
         cancelId: 0,
       });
@@ -318,6 +357,15 @@ async function ready(): Promise<void> {
   }
   setEnvironmentPath(process.env, await desktopPath({ signal: startup.signal }));
   if (startup.signal.aborted) return;
+  await restoreSchedulerUpdate(process.env).catch(async () => {
+    await dialog.showMessageBox({
+      type: "error",
+      message: "Background automations could not restart after the update.",
+      detail:
+        "Open Automations to repair the background service. Your schedules and run evidence are kept.",
+      buttons: ["Continue"],
+    });
+  });
   const transparent = await preferences.transparent();
   let enabled = transparent;
   const clickThrough = transparent && process.platform === "darwin";
@@ -353,6 +401,7 @@ async function ready(): Promise<void> {
     async (file) => {
       quitPending = true;
       try {
+        await prepareSchedulerUpdate(process.env);
         startup.abort();
         await shutdownDesktop();
         exiting = true;
@@ -397,6 +446,7 @@ async function ready(): Promise<void> {
         .finally(() => app.quit());
     });
   handle("desktop:app-update", (value) => updates?.action(parseUpdateAction(value)));
+  handle("desktop:automation", (value) => automations.request(value));
   handle("desktop:window-appearance", (value) => {
     if (value !== undefined) throw new Error("Invalid request");
     return { transparent, enabled, clickThrough };
@@ -694,6 +744,7 @@ async function ready(): Promise<void> {
   window.webContents.on("will-attach-webview", (event) => event.preventDefault());
   window.webContents.on("render-process-gone", () => void quit(false));
   window.webContents.on("did-start-loading", () => {
+    automations.reset();
     controller.clearDetailSubscriptions();
     void controller.cancelRag().catch(() => {});
     void controller.cancelDiffReads().catch(() => {});

@@ -23,6 +23,7 @@ describe("page tabs", () => {
         "settings",
         "apps",
         "memories",
+        "automations",
       ],
       active: "chat",
     });

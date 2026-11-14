@@ -6,6 +6,7 @@
     "src/desktop/preload.cts",
     "src/desktop/mcp-server.ts",
     "src/desktop/rag-worker.ts",
+    "src/automation/main.ts",
     "scripts/generate-icon.mjs",
     "src/**/*.test.{ts,tsx}",
     "test/**/*.{test,e2e}.{ts,mjs}",

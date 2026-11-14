@@ -112,7 +112,11 @@
 
 `src/desktop` is the Electron main process: the window, native dialogs, IPC handlers, and the `DesktopController` that owns one workspace and multiple independent run batches. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) before changing it.
 
-- Depend only on `core`, `bridge`, and the Node-only `platform` leaf. Only this module imports `electron`.
+- Depend only on `core`, `bridge`, `automation` and the Node-only `platform` leaf. Only this module imports `electron`.
+- Scheduled automations belong to the independent service, not controller batches.
+  Desktop shutdown, renderer loss and Stop all stop only desktop-owned work.
+  Service controls require native consent; renderer repositories use expiring
+  main-owned picker tokens. Pause/cancel service work before replacing binaries.
 - Keep the renderer sandboxed: context isolation on, Node.js integration off, navigation and new windows blocked.
 - Chat web links use the narrow openWebLink bridge: validate absolute HTTP(S) URLs without credentials, confirm the normalized destination natively, then open the default browser only on approval. Serialize confirmations, expose no arbitrary shell capability, and never log URLs or raw errors.
 - Keep `preload.cts` self-contained and expose only fixed methods. Never expose `ipcRenderer` or raw channels.

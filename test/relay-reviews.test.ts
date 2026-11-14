@@ -178,11 +178,17 @@ it("routes real Relay dispatch, review capture and between-turn feedback to the 
   );
   await vi.waitFor(() => expect(service?.snapshot().run?.status).toBe("idle"));
   expect((await relayTool("code60_get_context")).taskId).toBe(accepted.taskId);
-  const result = await service.reviewRequest({ type: "read", ...request, requestId: randomUUID() });
-  expect(result).toMatchObject({
-    type: "review",
-    live: true,
-    review: { submissions: [{ state: "delivered" }] },
+  await vi.waitFor(async () => {
+    const result = await service?.reviewRequest({
+      type: "read",
+      ...request,
+      requestId: randomUUID(),
+    });
+    expect(result).toMatchObject({
+      type: "review",
+      live: true,
+      review: { submissions: [{ state: "delivered" }] },
+    });
   });
   await service.cancelReviewReads();
   expect(service.workerSnapshot(true).runs[0]?.relay?.reviewId).toBe(request.reviewId);

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { RowDensity, TableLines } from "./table-preferences.js";
 
 export type TableId =
+  | "automations"
+  | "automation-history"
   | "memories"
   | "logs"
   | "sessions"

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import type { AppPagesProps } from "./app-page-props.js";
 import { AppsPage } from "./apps-page.js";
+import { AutomationsPage } from "./automations.js";
 import { ChatWorkspace } from "./chat-workspace.js";
 import { CommandsPage } from "./commands-page.js";
 import { ConfigurationsTable } from "./configurations.js";
@@ -99,6 +100,17 @@ export function AppPages(props: AppPagesProps) {
   const run = snapshot?.runs.find((item) => item.record.id === selected);
   const rows = useMemo(() => sessionRows(snapshot?.runs ?? []), [snapshot?.runs]);
   const views = {
+    automations: (
+      <AutomationsPage
+        api={api}
+        active={!splash && tabs.active === "automations"}
+        agents={snapshot?.agents ?? []}
+        lines={lines}
+        density={density}
+        fit={fit}
+        textStyles={textStyles}
+      />
+    ),
     memories: (
       <MemoriesPage
         api={api}

@@ -60,12 +60,15 @@ export { ExitCode, exitCodeFor } from "./exit-code.js";
 export type { Orchestrator } from "./orchestrator.js";
 export { recordedAgentAlive } from "./processes.js";
 export { buildHandoffPrompt } from "./recovery.js";
+export * from "./recurrence.js";
 export { TaskLoop, type TaskProposal, type TaskSource } from "./task-loop.js";
 export type * from "./types.js";
 export { ACTIVE_STATUSES, RefusedError, UsageError } from "./types.js";
 export { CODE60_VERSION, RUN_RECORD_FORMAT } from "./version.js";
 
 export interface CoreDeps {
+  /** Internal deterministic identity allocation, including preclaimed automation runs. */
+  newRunId?: () => string;
   memory?: import("./agent-memory.js").MemoryFactory;
   log?: LogSink;
   agents: Agents;

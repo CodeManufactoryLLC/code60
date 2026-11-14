@@ -20,6 +20,7 @@ import {
   stopRun,
   UsageError,
 } from "../core/index.js";
+import { automationCommand } from "./automation.js";
 import { formatList } from "./commands.js";
 import { formatResultsJson, formatResultsTable, reportProgress } from "./headless.js";
 import { readPrompt } from "./prompt.js";
@@ -45,6 +46,8 @@ export const HELP = `Usage:
   code60 diff <run-id>
   code60 discard <run-id> [--yes]
   code60 stop <run-id>
+  code60 automation --help
+  code60 scheduler --help
   code60 --version
 
 Commands:
@@ -128,6 +131,16 @@ export async function run(argv: readonly string[], io: CliIo): Promise<number> {
     return ExitCode.ok;
   }
   if (command === undefined) return usageError(io, "missing command");
+  if (command === "automation" || command === "scheduler") {
+    try {
+      return await automationCommand(command, rest, io);
+    } catch (error) {
+      io.stderr.write(`code60: ${diagnosticMessage(error)}\n`);
+      return error instanceof UsageError || (error as Error).name === "TypeError"
+        ? ExitCode.usage
+        : ExitCode.failed;
+    }
+  }
 
   const spec = COMMANDS[command];
   if (spec === undefined) return usageError(io, `unknown command '${command}'`);

@@ -231,9 +231,10 @@ describe("sidebar labels and disclosure icons", () => {
       expect(project).toContain("<svg");
       expect(html).not.toContain("<img");
       expect(html.match(/class="carbon-icon"/g)).toHaveLength(2);
-      expect(html.match(/class="navigation-icon"/g)).toHaveLength(28);
+      expect(html.match(/class="navigation-icon"/g)).toHaveLength(29);
       for (const [id, icon, label] of [
         ["tab-home", "house", "Home"],
+        ["tab-automations", "arrows-clockwise", "Automations"],
         ["tab-chat", "clipboard", "Projects"],
         ["tab-prompts", "pencil-line", "Prompt Builder"],
         ["tab-commands", "megaphone", "Command Builder"],

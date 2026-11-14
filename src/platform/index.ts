@@ -9,6 +9,13 @@ export {
   windowsHelper,
 } from "./helper.js";
 export { containedPath, samePath } from "./paths.js";
+export {
+  fileCode,
+  lockPrivateState,
+  readPrivateJson,
+  verifyPrivatePath,
+  writePrivateJson,
+} from "./private-state.js";
 export { type OwnedProcess, spawnOwnedProcess } from "./process.js";
 export {
   appendPrivateFile,
@@ -21,3 +28,4 @@ export {
   verifyPrivateSync,
   writePrivateFile,
 } from "./storage.js";
+export { controlUserService, type ServiceRuntime, userServiceDefinition } from "./user-service.js";

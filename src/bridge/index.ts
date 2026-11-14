@@ -1,3 +1,4 @@
+export * from "./automation.js";
 export * from "./database.js";
 export * from "./details.js";
 export * from "./logs.js";
@@ -320,6 +321,8 @@ export type RecoveryActionResult = { type: "restored" } | { type: "handoff-start
 export type ActionResult = string | RunEvent[] | RecoveryActionResult | undefined;
 
 export interface DesktopApi {
+  automation(request: import("./automation.js").AutomationUiRequest): Promise<unknown>;
+  onAutomationChanged(listener: () => void): () => void;
   memorySnapshot(): Promise<import("../contracts/index.js").MemorySnapshot>;
   browseMemories(
     request: import("../contracts/index.js").MemoryBrowse,

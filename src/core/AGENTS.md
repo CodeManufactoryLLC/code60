@@ -3,6 +3,8 @@
 `src/core` owns runs: the scheduler, permission policy, run records, and leftover detection. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) before changing it.
 
 - Receive `agents`, `git`, the filesystem, the clock, and process checks as injected interfaces, so tests run without real agents or repositories.
+- Own pure automation recurrence only. The automation module owns durable schedules,
+  claims and restart reconciliation, the explicitly approved recovery exception.
 - Keep core usable without the desktop app.
 - Optional interactive-only memory hooks may build bounded evidence context and
   replace an idle ACP session between turns. Never replay a dispatched prompt,

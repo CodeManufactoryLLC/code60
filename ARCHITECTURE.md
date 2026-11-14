@@ -280,6 +280,37 @@ imports are permitted.
 
 ## Non-goals
 
+### Approved scheduled automations
+
+An Electron-independent `automation` module owns local scheduled execution, private
+metadata, restart reconciliation and authenticated local IPC. Durable schedule
+metadata and persisted occurrence claims are approved exceptions to durable recovery
+being deferred. There is no durable task queue, catch-up, retry or exactly-once
+guarantee. Relay remains desktop-owned, not a daemon.
+
+Intervals are anchored elapsed time; daily/weekly schedules use a saved IANA zone.
+Skip nonexistent local times and use only the first repeated local time. Persist
+claims and advance recurrence before launch. Never replay uncertain work. Dispatch
+at most one automation globally and record busy/missed occurrences rather than queue
+them. Pause affects future runs; editing never changes an active snapshot.
+
+The service is the sole metadata writer under the private application state
+directory. Bound reads, check revisions, write atomically and hold an exclusive
+writer lock. Live or unverifiable ownership blocks recovery. Preserve history and
+worktrees. Persistence failure and low space stop dispatch.
+
+Use core headless single-turn execution with mandatory worktrees, the saved local
+base branch resolved at launch, explicit deny-by-default permissions and no MCP or
+implicit memory. Pin repository and provider identities; changes require review.
+Worktrees are not sandboxes. Never automatically merge, apply, commit or push.
+
+Installation requires consent. Use per-user launchd, Task Scheduler or systemd
+without linger. No TCP or hosted service. Desktop and CLI use the automation public
+API; the renderer uses narrow validated preload methods and opaque repository IDs.
+Desktop shutdown and Stop all do not stop service-owned work.
+The database-independent Automations sidebar page follows Projects in both display
+and keyboard order. The quit dialog explains that background automations continue.
+
 ### Approved agent memory
 
 Apps → Data Viewer → Memories is a database-independent, application-wide table
@@ -522,6 +553,7 @@ The seven-day/20 MiB policy does **not** expire or limit existing transcripts.
 | Renderer | `src/renderer` | The React interface, built with Vite. It runs sandboxed, with no Node.js or Electron access. |
 | Contracts | `src/contracts` | Browser-safe Zod schemas, shared value definitions, and the prompt templates sent to agents; no application or platform dependencies. |
 | Core | `src/core` | Runs, the parallel scheduler, permission policy, run records, and leftover detection. |
+| Automation | `src/automation` | Electron-independent scheduled execution service, private metadata, execution integration and local client. |
 | Agents | `src/agents` | Starting an agent process, the ACP client, translating ACP updates into run events, cancelling, and killing the process. |
 | Git | `src/git` | Creating, listing, and removing worktrees, measuring their logical file sizes, diffs, and status, using the `git` executable. |
 | Platform | `src/platform` | Node-only leaf module for executable/environment resolution, owned process trees, native identity, path identity, and private storage. Uses the first-party `native/windows` helper on Windows, never an ABI-dependent addon. |
@@ -548,8 +580,8 @@ flowchart LR
   Platform --> Win32["Win32 helper / Job Objects"]
 ```
 
-- `cli` depends only on `core`. `core` exports the event and run types the CLI and desktop app render.
-- `desktop` depends on `core`, `bridge`, and `platform`. `bridge` and `renderer` may import only types from `core`; neither may import `platform`. The renderer reaches the main process only through the preload bridge. Only `desktop` imports Electron, and only `renderer` imports React.
+- `cli` depends on `core` and `automation`. `automation` depends only on `core`, `contracts` and `platform`. Pure recurrence lives in core; OS service primitives live in platform.
+- `desktop` depends on `core`, `bridge`, `automation` and `platform`. `bridge` and `renderer` may import only types from `core`; neither may import `platform`. The renderer reaches the main process only through the preload bridge. Only `desktop` imports Electron, and only `renderer` imports React.
 - `agents` and `git` never import each other or `core`. `core` receives them as injected interfaces, so tests can use fakes.
 - `core`, `bridge`, and `agents` may import `contracts` through its index. `contracts` imports only Zod, never application modules or Node.js. It owns shared IDs, tool kinds, stop reasons, duration rules, and the [prompt templates](#prompt-templates). Record schemas live in `core`, IPC schemas in `bridge`, and config schemas in `core`. Zod code generation is disabled before schema construction to preserve the renderer CSP.
 - Domain logic lives in `core` and runs without the desktop app.

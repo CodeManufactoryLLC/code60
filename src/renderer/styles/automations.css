@@ -1,0 +1,397 @@
+/* Automations */
+.automations-page {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-width: 1440px;
+  width: 100%;
+  margin-inline: auto;
+  padding: 16px var(--page-padding);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.automation-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0 0 16px;
+}
+
+.automation-page-heading > div:first-child {
+  min-width: 0;
+}
+
+.automation-page-heading h1 {
+  margin: 0;
+}
+
+.automation-page-heading p,
+.automation-history-footer > p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.automation-page-actions,
+.automation-service-actions,
+.automation-action-group,
+.automation-service-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.automation-page-actions {
+  margin-left: auto;
+}
+
+.automation-service {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius);
+  background: var(--surface);
+}
+
+.automation-service-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.automation-service-copy {
+  min-width: 0;
+}
+
+.automation-service-copy h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.automation-service-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.automation-health-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.automation-health-dot.is-connected {
+  background: var(--primary);
+}
+
+.automation-service-actions {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.automation-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--destructive);
+  font-size: 12px;
+}
+
+.automation-service-options {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.automation-service-options summary,
+.automation-more-actions summary {
+  width: fit-content;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+}
+
+.automation-service-options[open] summary,
+.automation-more-actions[open] summary {
+  margin-bottom: 8px;
+}
+
+.automation-service-tools {
+  padding: 2px 0;
+}
+
+.automations-page > [role="alert"] {
+  margin: 0 0 12px;
+  color: var(--destructive);
+  overflow-wrap: anywhere;
+}
+
+.automation-grid {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+}
+
+.automation-schedules-grid {
+  height: 280px;
+  min-height: 180px;
+}
+
+.automation-history-grid {
+  height: 280px;
+  min-height: 180px;
+}
+
+.automation-selection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-block: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.automation-selection-label {
+  display: grid;
+  min-width: 0;
+}
+
+.automation-selection-label > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.automation-selection-label > strong {
+  overflow: hidden;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automation-action-group {
+  justify-content: flex-end;
+}
+
+.automation-more-actions {
+  position: relative;
+}
+
+.automation-more-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.automation-history-footer,
+.automation-evidence-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0 16px;
+}
+
+.automation-history-footer > p {
+  margin: 0;
+}
+
+.automation-evidence-actions {
+  margin-top: -8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.automation-evidence-actions > span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.automation-form {
+  display: grid;
+  gap: 12px;
+  max-height: min(72vh, 760px);
+  overflow: auto;
+  padding: 12px;
+  scrollbar-gutter: stable;
+}
+
+.automation-form-basics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px 16px;
+}
+
+.automation-form-basics > label,
+.automation-form-field,
+.automation-form fieldset > label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.automation-form-label {
+  color: var(--muted);
+}
+
+.automation-repository-choice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.automation-repository-choice > span {
+  min-width: 0;
+  flex: 1;
+}
+
+.automation-form-prompt,
+.automation-form-enabled,
+.automation-form fieldset,
+.automation-form-note,
+.automation-form > [role="alert"],
+.automation-form-actions {
+  grid-column: 1 / -1;
+}
+
+.automation-form-prompt {
+  display: grid;
+  gap: 4px;
+}
+
+.automation-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.automation-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.automation-form input,
+.automation-form select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.automation-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 10px 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--ui-radius);
+}
+
+.automation-form fieldset > legend {
+  grid-column: 1 / -1;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+.automation-form-enabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.automation-form > p,
+.automation-form fieldset > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.automation-form fieldset > .automation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.automation-form fieldset > .automation-actions label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.automation-form > label input[type="checkbox"],
+.automation-form .automation-actions input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+
+:where(.automation-form p, .automation-form span, .automation-evidence) {
+  overflow-wrap: anywhere;
+}
+
+.automation-evidence {
+  max-height: 70vh;
+  white-space: pre-wrap;
+  overflow: auto;
+  padding: 12px;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 560px) {
+  .automations-page {
+    padding: 12px;
+  }
+
+  .automation-page-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .automation-page-actions > .primary {
+    flex: 1;
+  }
+
+  .automation-selection-actions {
+    align-items: flex-start;
+  }
+
+  .automation-selection-actions .automation-action-group {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .automation-form-basics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

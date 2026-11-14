@@ -27,7 +27,7 @@ describe("navigation registry", () => {
     const labels = pagesInGroup("tables").map((id) => pageDefinitions[id].label);
     expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
     expect(pagesInGroup("apps")).toEqual(["commands", "prompts"]);
-    expect(pagesInGroup("primary")).toEqual(["home", "apps", "search"]);
+    expect(pagesInGroup("primary")).toEqual(["home", "automations", "apps", "search"]);
   });
   it("uses the same availability for palette and sidebar, including database-free Logs", () => {
     for (const database of [null, "/db"]) {
@@ -42,6 +42,7 @@ describe("navigation registry", () => {
       }
     }
     expect(pageAvailable("logs", null)).toBe(true);
+    expect(pageAvailable("automations", null)).toBe(true);
     expect(pageAvailable("memories", null)).toBe(true);
     expect(pageAvailable("settings", null)).toBe(true);
     expect(pageAvailable("apps", null)).toBe(true);

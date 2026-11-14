@@ -1256,6 +1256,64 @@ test("desktop: project chat recovers a missed detail frame without app transcrip
   }
 });
 
+test("desktop: Automations keeps maintenance collapsed and adapts its editor to narrow windows", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "code60-automations-layout-"));
+  try {
+    application = await launch(directory, directory, join(directory, "code60.sqlite"));
+    const page = await application.firstWindow();
+    await page.getByRole("button", { name: "Start", exact: true }).click();
+    await page.getByRole("tab", { name: "Automations", exact: true }).click();
+    const panel = page.locator("#panel-automations");
+    await expect(panel.getByRole("heading", { name: "Automations", exact: true })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Install service", exact: true })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Uninstall", exact: true })).not.toBeVisible();
+    for (const grid of await panel.locator(".automation-grid").all()) {
+      const canvas = grid.locator("canvas").first();
+      await expect(canvas).toBeVisible();
+      expect((await canvas.boundingBox())?.height).toBeGreaterThan(100);
+    }
+    for (const scheme of ["light", "dark"]) {
+      await page.evaluate(
+        (value) => document.documentElement.setAttribute("data-color-scheme", value),
+        scheme,
+      );
+      await page.screenshot({ path: test.info().outputPath(`automations-${scheme}.png`) });
+    }
+    await panel.getByText("Service options", { exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Uninstall", exact: true })).toBeVisible();
+    await panel.getByText("Service options", { exact: true }).click();
+    await panel.getByRole("button", { name: "New automation", exact: true }).click();
+    const editor = page.getByRole("dialog", { name: "New automation", exact: true });
+    await expect(editor.getByLabel("Saved prompt", { exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath("automation-editor-wide.png") });
+    await application.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.setSize(760, 650),
+    );
+    await expect(editor).toBeVisible();
+    expect(
+      await editor.locator(".automation-form").evaluate((element) => ({
+        overflow: element.scrollWidth > element.clientWidth,
+        scrollable: element.scrollHeight > element.clientHeight,
+      })),
+    ).toEqual({ overflow: false, scrollable: true });
+    await editor
+      .getByRole("button", { name: "Save automation", exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(editor.getByRole("button", { name: "Cancel", exact: true })).toBeInViewport();
+    await page.screenshot({ path: test.info().outputPath("automation-editor-narrow.png") });
+    await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+    expect(
+      await panel
+        .locator(".automations-page")
+        .evaluate((element) => element.scrollWidth > element.clientWidth),
+    ).toBe(false);
+    await page.screenshot({ path: test.info().outputPath("automations-narrow.png") });
+  } finally {
+    await application?.close().catch(() => {});
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("desktop: Home cards navigate, align with page titles and adapt to themes and large text", async () => {
   const directory = await mkdtemp(join(tmpdir(), "code60-home-cards-"));
   try {
@@ -3218,6 +3276,8 @@ test("desktop: database connection gates splash and workspace controls", async (
     await page.keyboard.press("ArrowDown");
     await expect(chatTab).toBeFocused();
     await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("tab", { name: "Automations", exact: true })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
     await expect(page.getByRole("tab", { name: "Apps", exact: true })).toBeFocused();
     await page.getByRole("tab", { name: "Settings", exact: true }).click();
     await selectSettingsPage(page, "Appearance");
@@ -3822,6 +3882,7 @@ test("desktop: unread turns stay isolated and survive renderer reloads", async (
       ["tab-home", "house"],
       ["tab-apps", "app-window"],
       ["tab-chat", "clipboard"],
+      ["tab-automations", "arrows-clockwise"],
       ["tab-prompts", "pencil-line"],
       ["tab-commands", "megaphone"],
       ["tab-settings", "gear"],
@@ -4327,7 +4388,7 @@ test("desktop: sidebar tabs, solid background, and restart-only transparent back
     await expect(sidebarHeader).toHaveCSS("border-radius", "0px");
 
     const tabs = page.locator(".page-tabs [role='tab']");
-    await expect(tabs).toHaveCount(25);
+    await expect(tabs).toHaveCount(26);
     const searchAction = page.locator(".sidebar-search");
     await expect(searchAction).toHaveAccessibleName("Search");
     await expect(page.locator(".page-tabs #tab-search")).toHaveCount(0);
@@ -4791,7 +4852,7 @@ test("desktop: workspace, streaming, approvals, follow-up, review, themes, shutd
     await expectTabAppearance(page);
     await selectSidebarPage(page, "Sessions");
     await expect(sessionsTab).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tab")).toHaveCount(22);
+    await expect(page.getByRole("tab")).toHaveCount(23);
     await expectTabAppearance(page);
     await sessionsTab.click();
     await expect(sessionsTab).toBeFocused();
@@ -5212,7 +5273,7 @@ test("desktop: workspace, streaming, approvals, follow-up, review, themes, shutd
     await expect(appearance).toBeVisible();
     await expect(settingsTab).toBeFocused();
     await page.keyboard.press("ControlOrMeta+Comma");
-    await expect(page.getByRole("tab")).toHaveCount(22);
+    await expect(page.getByRole("tab")).toHaveCount(23);
     // Tab switching preserves Settings scroll, session selection, and the open chat draft.
     const settingsPage = page.locator(".settings-page");
     await selectSettingsPage(page, "Text");
@@ -5243,6 +5304,7 @@ test("desktop: workspace, streaming, approvals, follow-up, review, themes, shutd
       await settingsDisclosure.click();
     const sidebarPages = [
       "Projects",
+      "Automations",
       "Apps",
       "Command Builder",
       "Data Viewer",
@@ -5314,7 +5376,7 @@ test("desktop: workspace, streaming, approvals, follow-up, review, themes, shutd
     await page.keyboard.press("ArrowDown");
     await expect(page.getByRole("tab", { name: "Projects", exact: true })).toBeFocused();
     await settingsTab.click();
-    await expect(page.getByRole("tab")).toHaveCount(22);
+    await expect(page.getByRole("tab")).toHaveCount(23);
     await settingsPage.evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -7932,6 +7994,7 @@ test("desktop: Chat landing, automatic ACP conversation, navigation, cancellatio
     await expect(page.getByRole("tab")).toHaveText([
       "Home",
       "Projects",
+      "Automations",
       "Apps",
       "Command Builder",
       "Prompt Builder",
@@ -7942,6 +8005,7 @@ test("desktop: Chat landing, automatic ACP conversation, navigation, cancellatio
     await expect(page.getByRole("tab")).toHaveText([
       "Home",
       "Projects",
+      "Automations",
       "Apps",
       "Command Builder",
       "Configurations",

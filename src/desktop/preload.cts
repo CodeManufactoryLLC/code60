@@ -2,6 +2,12 @@ const { contextBridge, ipcRenderer } = require("electron") as typeof import("ele
 
 // Keep this sandboxed preload self-contained; do not expose ipcRenderer or raw channels.
 contextBridge.exposeInMainWorld("desktop", {
+  automation: (request: unknown) => ipcRenderer.invoke("desktop:automation", request),
+  onAutomationChanged: (listener: () => void) => {
+    const handler = () => listener();
+    ipcRenderer.on("desktop:automation-changed", handler);
+    return () => ipcRenderer.removeListener("desktop:automation-changed", handler);
+  },
   memorySnapshot: () => ipcRenderer.invoke("desktop:memory-snapshot"),
   browseMemories: (request: unknown) => ipcRenderer.invoke("desktop:memory-browse", request),
   memoryDetail: (request: unknown) => ipcRenderer.invoke("desktop:memory-detail", request),

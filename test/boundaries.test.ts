@@ -6,8 +6,9 @@ import { describe, expect, it } from "vitest";
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
 
 const ALLOWED: Readonly<Record<string, readonly string[]>> = {
-  cli: ["core"],
-  desktop: ["core", "bridge", "platform"],
+  cli: ["core", "automation"],
+  desktop: ["core", "bridge", "platform", "automation"],
+  automation: ["core", "contracts", "platform"],
   renderer: ["bridge", "core"],
   bridge: ["core", "contracts"],
   core: ["agents", "git", "contracts", "platform"],
