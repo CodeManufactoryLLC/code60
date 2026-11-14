@@ -126,6 +126,10 @@ for (const location of process.platform === "win32"
         await window.desktop.finishAgentSetup({ sessionId: session.id });
       });
       await expect.poll(() => readFile(probe, "utf8").catch(() => "")).toBe("ok\n");
+      // The probe is written during session/new, before Relay's session is ready.
+      await expect
+        .poll(() => page.evaluate(async () => (await window.desktop.snapshot()).chat.run?.status))
+        .toBe("idle");
       const idle = await page.evaluate(() => window.desktop.snapshot());
       expect(idle.chat.run?.turns).toBe(0);
       expect(idle.runs).toEqual([]);
